@@ -1,1 +1,3 @@
 __pycache__/
+runs/
+models/pretrained_vit_feature_extractor.pth
