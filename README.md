@@ -116,3 +116,26 @@ one of the biggest porblems in dl are misaligned tensor shapes
 - P = patchs ize
 - N = number of patches = (height*width)/p^2
 - D =  constant latent vector size = embedding dimension (see table 1)
+
+```py
+# exmaple values 
+height = 224
+width = 224
+color_channels = 3
+patch_size = 16
+
+#calc the number of patches
+num_patches = int((height *width) / (patch_size**2)) 
+print(num_patches) 
+```
+Output:
+196
+
+input shape( single@D iamge): (224, 224, 3)
+Output shape (single 1D sequence of pathces): (196, 768)
+
+
+* Input shape: (224,224) -> single image -> (height, width, color channels)
+* Output shape: (196,768) -> (number of patches, embedding_dimension)   ; embedding dimension = $D$ from table 1
+
+## turning a single image into patches
