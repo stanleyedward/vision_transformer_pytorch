@@ -95,3 +95,24 @@ y = MLP(LN_layer(x_output_MLP_block))
         
         - denoted by h
 
+
+>## Equation 1: split data into patches and creating the class, position and patch embedding 
+
+### layers = input -> function -> output 
+
+* what's the input shape?
+* whats the output shape?
+
+one of the biggest porblems in dl are misaligned tensor shapes
+
+* Input shape: (224,224) -> single image -> (height, width, color channels)
+* Output shape: 
+
+* Input shape: $H*W*C$ [hieight,width, color channels]
+* output shape: $N\times(P^2*C)$
+- H = height
+- W = width
+- C = Color channels
+- P = patchs ize
+- N = number of patches = (height*width)/p^2
+- D =  constant latent vector size = embedding dimension (see table 1)
