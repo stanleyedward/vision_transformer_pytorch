@@ -62,3 +62,36 @@ or
 ```python
 y = MLP(LN_layer(x_output_MLP_block)) 
 ```
+
+### table 1/3:
+<!-- ![Alt text](image-3.png) -->
+![image-3.png](attachment:image-3.png)
+
+#### all different sizes of the same model
+#### ViT-B/16 - ViT-Base with image patch size 16x16
+
+* layers = no. of transformers encoder layers
+* hidden size $D$  - the embedding size throughout the architecture
+
+                    - if we have embedding size of 768 means 
+
+                    - each image patch that may be 16x16 
+
+                    - is turned into a vector of size 768
+
+                    - learnable vector*
+                    
+* MLP size - no. of hidden units/neurons in the MLP
+
+            - if the MLP size is 3072 
+            - then the no of hidden units in the MLP layer in 3072
+
+* Heads - the number of heads within multihead self-attention layers
+
+        - if heads = 12 we have 12 heads in MSA layer
+        
+<!-- > ![Alt text](image-4.png) -->
+>![image-4.png](attachment:image-4.png)
+        
+        - denoted by h
+
