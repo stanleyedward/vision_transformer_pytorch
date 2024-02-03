@@ -265,9 +265,9 @@ torch.Size([1, 196, 768]) -> [batchsize, num of patches, embedding dimension]
 we want this module to do a few things.
 1. Create a class called PatchEmbedding that inherits from nn.Module
 2. Initialize with appropriate hyperparameters, such a schannels, embedding dimension, patch_size.
-3. create a layer to turn an imamge into embedded patches using nn.Conv@d().
+3. create a layer to turn an imamge into embedded patches using `nn.Conv2d()`.
 4. create a layer to flatten the feautre maps of the output of the layer in 3.
-5. define forward() that defines the forward computations (eg. pass through layer from 3 to 4)
+5. define `forward()` that defines the forward computations (eg. pass through layer from 3 to 4)
 6. make sure the output shape of the layer reflects the required output shape of the patch embedding.
 
 ```py
@@ -974,7 +974,7 @@ Estimated Total Size (MB): 0.61
 ==================================================================================================================================
 </pre>
 
-The output of the summary is slightly different to ours due to how torch.nn.TransformerEncoderLayer() constructs its layer.
+The output of the summary is slightly different to ours due to how `torch.nn.TransformerEncoderLayer()` constructs its layer.
 
 But the layers it uses, number of parameters and input and output shapes are the same.
 
