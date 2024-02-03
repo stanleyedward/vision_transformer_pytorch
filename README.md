@@ -9,15 +9,14 @@ Research Paper: [An Image is Worth 16x16 Words: Transformers for Image Recogniti
 - text
 
 ### figure 1
-<!-- ![Alt text](image-2.png) -->
-![image-2.png](attachment:image-2.png)
+![Alt text](images/image-2.png)
 * embedding - learnable representation (start with random numbers and improve them overtime) 
 * mlp = multilevel perceptron
 
 
 ### four equations
 <!-- ![Alt text](image-1.png) -->
-![image-1.png](attachment:image-1.png)
+![image-1.png](images/image-1.png)
 
 Equaion1:
 * embedding - learnable representation (start with random numbers and improve them overtime) 
@@ -65,7 +64,7 @@ y = MLP(LN_layer(x_output_MLP_block))
 
 ### table 1/3:
 <!-- ![Alt text](image-3.png) -->
-![image-3.png](attachment:image-3.png)
+![Alt text](images/image-3.png)
 
 #### all different sizes of the same model
 #### ViT-B/16 - ViT-Base with image patch size 16x16
@@ -91,7 +90,7 @@ y = MLP(LN_layer(x_output_MLP_block))
         - if heads = 12 we have 12 heads in MSA layer
         
 <!-- > ![Alt text](image-4.png) -->
->![image-4.png](attachment:image-4.png)
+>![Alt text](images/image-4.png)
         
         - denoted by h
 
@@ -467,22 +466,22 @@ patch_embedding with class token shape :torch.Size([1, 197, 768])
 patch_and_position_embedding shape: torch.Size([1, 197, 768])
 
 ># Equation 2.
-![image.png](attachment:image.png)
+![Alt text](images/image.png)
 
 ## we finished embedding the patches 
 ## now we enter the transformer encoder
 - consists of 2 main blocks of eq.2 and eq.3
 
-![image-1.png](attachment:image-1.png)
+![Alt text](images/image-1.png)
 ### equation 2 has the MSA block
 - for many of these layers like `MSA` pytorch has prebuilt function for the layer
 
 #### from [Attention Is All You Need paper](https://arxiv.org/abs/1706.03762)
-![swappy-20231003-183132.png](attachment:swappy-20231003-183132.png)
+![Alt text](images/swappy-20231003-183132.png)
 
-![swappy-20231003-183647.png](attachment:swappy-20231003-183647.png)
+![Alt text](images/swappy-20231003-183647.png)
 
-![swappy-20231003-185912.png](attachment:swappy-20231003-185912.png)
+![Alt text](images/swappy-20231003-185912.png)
 
 Q- Query, K-key, V-value are instances of the `same` sequence of vectors,
 
@@ -490,25 +489,25 @@ tells us which patch needs to pay how much `attention` to which other word or im
 
 to find how much related 1 patch is to another
 
-![swappy-20231003-190543.png](attachment:swappy-20231003-190543.png)
+![Alt text](images/swappy-20231003-190543.png)
 
 ># Equation 2.
-![image.png](attachment:image.png)
+![Alt text](images/image.png)
 
 ## we finished embedding the patches 
 ## now we enter the transformer encoder
 - consists of 2 main blocks of eq.2 and eq.3
 
-![image-1.png](attachment:image-1.png)
+![Alt text](images/image-1.png)
 ### equation 2 has the MSA block
 - for many of these layers like `MSA` pytorch has prebuilt function for the layer
 
 #### from [Attention Is All You Need paper](https://arxiv.org/abs/1706.03762)
-![swappy-20231003-183132.png](attachment:swappy-20231003-183132.png)
+![Alt text](images/swappy-20231003-183132.png)
 
-![swappy-20231003-183647.png](attachment:swappy-20231003-183647.png)
+![Alt text](images/swappy-20231003-183647.png)
 
-![swappy-20231003-185912.png](attachment:swappy-20231003-185912.png)
+![Alt text](images/swappy-20231003-185912.png)
 
 Q- Query, K-key, V-value are instances of the `same` sequence of vectors,
 
@@ -516,7 +515,7 @@ tells us which patch needs to pay how much `attention` to which other word or im
 
 to find how much related 1 patch is to another
 
-![swappy-20231003-190543.png](attachment:swappy-20231003-190543.png)
+![Alt text](images/swappy-20231003-190543.png)
 
 ## equation 2 (layer normalization) (LN block)
 * ### layer norm
@@ -529,7 +528,7 @@ to find how much related 1 patch is to another
 
 $D$ in our case is the embedding dimensions here [768]
 
-![swappy-20231003-192146.png](attachment:swappy-20231003-192146.png)
+![Alt text](images/swappy-20231003-192146.png)
        
         * when we normalize along the embedding dimension, it's like making all of the steps in the staircase to the same size
 
@@ -626,7 +625,7 @@ tensor([[[False, False, False,  ..., False, False, False],
 ## how do we add the skip/residual connection in this?
 
 >## Equation 3: Multilayer perceptron block (MLP block)
-![image-1.png](attachment:image-1.png)
+![image-1.png](images/image-1.png)
 
 ### **MLP** contains two layers with a GELU non-linearlity(mentioned above)
 
@@ -636,10 +635,10 @@ tensor([[[False, False, False,  ..., False, False, False],
     In tensorflow theyre called `tf.keras.dense
 **MLP_size / number of hidden units of MLP** = 3072 for ViT-Base (from table 1)
 
-![image-3.png](attachment:image-3.png)
+![image-3.png](images/image-3.png)
 
 ### [what is **GELU** non linearity](https://paperswithcode.com/method/gelu) 
-![swappy-20231003-225340.png](attachment:swappy-20231003-225340.png)
+![swappy-20231003-225340.png](images/swappy-20231003-225340.png)
 
     * the standard Gaussian cumulative distribution function. The GELU nonlinearity weights inputs by their percentile, rather than gates inputs by their sign as in ReLUs (). 
     * Consequently the GELU can be thought of as a smoother ReLU.
@@ -649,7 +648,7 @@ tensor([[[False, False, False,  ..., False, False, False],
 
     * value for dropout is available at table 3 Dropout = 0.1 for Vit/b-16
 
-![swappy-20231003-231246.png](attachment:swappy-20231003-231246.png)
+![swappy-20231003-231246.png](images/swappy-20231003-231246.png)
 
 In pseudocode:
 ```py
@@ -727,7 +726,7 @@ tensor([[[False, False, False,  ..., False, False, False],
 The transfformer encoder is a combination of alternating blocks of MSA blocks and MLP blocks
 LN is applied between every block, and residual connections after every block
 
-![image.png](attachment:image.png)
+![image.png](images/image.png)
 
 **encoder** = turn a sequence into a laernable representation
 
@@ -859,7 +858,7 @@ Estimated Total Size (MB): 27.98
 
 ## method 2:there is a trick we can do with pytorch to make the implementation even smaller
 since how good the transformer arch is, pytorch has implemented ready to use transformer encoder layers
-![swappy-20231004-224819.png](attachment:swappy-20231004-224819.png)
+![swappy-20231004-224819.png](images/swappy-20231004-224819.png)
 
 ### craete  a tranformer encoder layer with inbuilt pytorch transformer layers
 
@@ -925,12 +924,12 @@ then why did we spend all the time recreating the encoder piece by piece instead
 
 ## if you wanted to stack multiple tranformer encoder layers u can use:
 
-![swappy-20231004-230731.png](attachment:swappy-20231004-230731.png)
+![swappy-20231004-230731.png](images/swappy-20231004-230731.png)
 ### as u can see in the ViT/B-16 There are 12 layers ( from table 1)
-![image-3.png](attachment:image-3.png)
+![image-3.png](images/image-3.png)
 
 >## putting it all together (along with equation 4)
-![image-1.png](attachment:image-1.png)
+![image-1.png](images/image-1.png)
 
 >## ViT architecture.
 
@@ -1032,12 +1031,12 @@ class_embedding.shape, class_embedding_expanded.shape
 (torch.Size([1, 1, 768]), torch.Size([32, 1, 768]))
 
 ## in equation 4 
-![image-1.png](attachment:image-1.png)
+![image-1.png](images/image-1.png)
 ## u can see we only want to pass the classification token as it says (z^0 L) [z zeroth of the last token]
 this is why the figure has an arrow only on the last token here at the classification token, ie we only want to pass the classicatino token into the MLP head
 - "the classficaiton head is implemeneted by a MLP iwth one hidden layer at pre-training time and by a single linear layer at fine-tuning time"
 
-![image-2.png](attachment:image-2.png)
+![image-2.png](images/image-2.png)
 
 ## oddly enough the equation 4 doesnt mention an MLP layer, but the presence of an MLP layer at the end is implied throughout the paper
 
@@ -1143,7 +1142,7 @@ Estimated Total Size (MB): 332.69
 Now that we've replicated the architecture, lets see how it perofmrs on our data
 
 ### setting up optimizer
-![swappy-20231009-222119.png](attachment:swappy-20231009-222119.png)
+![swappy-20231009-222119.png](images/swappy-20231009-222119.png)
 - adam optimizer
  * beta1 = 0.9; beta2 = 0.999 (defaults)
  * weight_decay = 0.1 (high)
@@ -1182,11 +1181,11 @@ results = train_engine.train(model=vit,
 
 Because training in kaggle was faster:
 
-![swappy-20231010-093049.png](attachment:swappy-20231010-093049.png)
+![swappy-20231010-093049.png](images/swappy-20231010-093049.png)
 
 plotting loss curves:
 
-![swappy-20231010-094435.png](attachment:swappy-20231010-094435.png)
+![swappy-20231010-094435.png](images/swappy-20231010-094435.png)
 
 ### So what are we missing 
 
@@ -1194,7 +1193,7 @@ plotting loss curves:
 
 We've replicated the model architecture correctly, but what was different our training procedure to get poor results and vit papers training procedure to have great results
 
-![swappy-20231013-075446.png](attachment:swappy-20231013-075446.png)
+![swappy-20231013-075446.png](images/swappy-20231013-075446.png)
 
 The original ViT model simply had gargantuous amounts of data, which gave it more options to learn, and transformers are known for their data hungry training because of how "general" they are.
 In deep learning more data is ALWAYS a good thing
@@ -1214,17 +1213,17 @@ In deep learning more data is ALWAYS a good thing
 
 Linear Warmup is a learning rate schedule where we linearly increase the learning rate from a low rate to a constant rate thereafter. `This reduces volatility in the early stages of training.`
 
-![swappy-20231013-080719.png](attachment:swappy-20231013-080719.png)
+![swappy-20231013-080719.png](images/swappy-20231013-080719.png)
 
 ##### learning rate decay 
 
 Learning rate decay is a technique for training modern neural networks. It starts training the network with a large learning rate and then `slowly reducing/decaying it until local minima is obtained. It is empirically observed to help both optimization and generalization.`
 
-![swappy-20231013-080907.png](attachment:swappy-20231013-080907.png)
+![swappy-20231013-080907.png](images/swappy-20231013-080907.png)
 
 ##### gradient clipping
 
-![swappy-20231013-081042.png](attachment:swappy-20231013-081042.png)
+![swappy-20231013-081042.png](images/swappy-20231013-081042.png)
 
 #### since we are already `underfitting` we don't apply regularization techniques (yet)
 
@@ -1254,7 +1253,7 @@ Generally, in deep laerning if you can use a pretrained model from a large datas
 * limiteed trainng resources
 * get better results faster (maybe)
 
-![swappy-20231013-082649.png](attachment:swappy-20231013-082649.png)
+![swappy-20231013-082649.png](images/swappy-20231013-082649.png)
 
 #### 30 days is actually a smalll amount of time for large ML models, it is actually a small amount of time
 ##### hugging face BLOOM took about 3.5 months to train
@@ -1357,7 +1356,7 @@ When using a pretrained model we want to make sure our data is formatted same wa
 
 [VIT/B-16](https://pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html#vit-b-16)
 
-![swappy-20231013-085215.png](attachment:swappy-20231013-085215.png)
+![swappy-20231013-085215.png](images/swappy-20231013-085215.png)
 
 ```py
 #get automatic transforms fromm pretrained VIT weights
