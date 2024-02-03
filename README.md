@@ -1137,3 +1137,168 @@ Forward/backward pass size (MB): 102.88
 Params size (MB): 229.20
 Estimated Total Size (MB): 332.69
 ============================================================================================================================================
+
+## lets see if it actually works
+>## Train the ViT model.
+Now that we've replicated the architecture, lets see how it perofmrs on our data
+
+### setting up optimizer
+![swappy-20231009-222119.png](attachment:swappy-20231009-222119.png)
+- adam optimizer
+ * beta1 = 0.9; beta2 = 0.999 (defaults)
+ * weight_decay = 0.1 (high)
+    weight decay is L2 regularization method by addning a small penalty, usually the square of the weights, (all the weights of the model), to the loss function, therefore larger weights are penalized more than smaller weights, preventing sparse networks caused in L1 regularization where the absolute sum of the weights are added to the loss, which makes weights tend to 0.0 making it sparse.
+    Regularization prevents overfitting.
+ * base learning rate = $10^-3$ from table 3
+
+ ```py
+ #optimizer
+optimizer = torch.optim.Adam(params=vit.parameters(),
+                             betas=(0.9,0.999),
+                             lr=1e-3) #from table 3
+```
+
+### setting up a loss function
+the vit paper doesnt mention what loss function they used.
+therefore since it is a multi-clas classification we'll use `nn.crossentropyloss`
+
+```py
+# loss
+loss_fn = nn.CrossEntropyLoss()
+```
+
+### training our model
+
+```py
+from pytorch_modules.modules import train_engine
+results = train_engine.train(model=vit,
+                             train_dataloader=train_dataloader,
+                             test_dataloader=test_dataloader,
+                             optimizer=optimizer,
+                             loss_fn=loss_fn,
+                             epochs=10,
+                             device=device)
+```
+
+Because training in kaggle was faster:
+
+![swappy-20231010-093049.png](attachment:swappy-20231010-093049.png)
+
+plotting loss curves:
+
+![swappy-20231010-094435.png](attachment:swappy-20231010-094435.png)
+
+### So what are we missing 
+
+#### how is our training setup different to the ViT Paper?
+
+We've replicated the model architecture correctly, but what was different our training procedure to get poor results and vit papers training procedure to have great results
+
+![swappy-20231013-075446.png](attachment:swappy-20231013-075446.png)
+
+The original ViT model simply had gargantuous amounts of data, which gave it more options to learn, and transformers are known for their data hungry training because of how "general" they are.
+In deep learning more data is ALWAYS a good thing
+
+| **Hyperparameter value** | **ViT Paper** | **Our implementation** |
+| ----- | ----- | ----- |
+| Number of training images | 1.3M (ImageNet-1k), 14M (ImageNet-21k), 303M (JFT) | 225 |
+| Epochs | 7 (for largest dataset), 90, 300 (for ImageNet) | 10 | 
+| Batch size | 4096 | 32 |
+| [Learning rate warmup](https://paperswithcode.com/method/linear-warmup) | 10k steps (Table 3) | None | 
+| [Learning rate decay](https://medium.com/analytics-vidhya/learning-rate-decay-and-methods-in-deep-learning-2cee564f910b#:~:text=Learning%20rate%20decay%20is%20a,help%20both%20optimization%20and%20generalization.) | Linear/Cosine (Table 3) | None | 
+| [Gradient clipping](https://paperswithcode.com/method/gradient-clipping) | Global norm 1 (Table 3) | None |
+
+#### learning rate warmup, learning rate decay and gradient clipping are used as regularization techniques to reduce `overfitting`
+
+##### learning rate warmup
+
+Linear Warmup is a learning rate schedule where we linearly increase the learning rate from a low rate to a constant rate thereafter. `This reduces volatility in the early stages of training.`
+
+![swappy-20231013-080719.png](attachment:swappy-20231013-080719.png)
+
+##### learning rate decay 
+
+Learning rate decay is a technique for training modern neural networks. It starts training the network with a large learning rate and then `slowly reducing/decaying it until local minima is obtained. It is empirically observed to help both optimization and generalization.`
+
+![swappy-20231013-080907.png](attachment:swappy-20231013-080907.png)
+
+##### gradient clipping
+
+![swappy-20231013-081042.png](attachment:swappy-20231013-081042.png)
+
+#### since we are already `underfitting` we don't apply regularization techniques (yet)
+
+The preferred way to train a model to first overfit first train it as much data and as much model hyperparameters as possible, and then prevent overfitting using regularization techniques to prevent `overfitting`
+
+### Main things our training process is missing:
+#### prevent underfitting
+* Data - our setup uses much less data (225 vs millions)
+
+#### prevent overfitting
+* learning rate warmup - start with a low learning rate and increase to the base LR
+* learning rate decay - as model starts to converge, starts to lower LR
+* Gradient clipping - prevents gradients from getting too big 
+
+#### what if we were stuck with the same amount of data? 
+#### what are the best results you can get with just those images?
+
+
+>## Transfer Learning
+### using a pretrained ViT from `torchvision.models`
+
+Generally, in deep laerning if you can use a pretrained model from a large dataset on your own problem, it's often acheives `great results with little data`
+
+**Why use a pretrained model?**
+
+* Some times data is limited 
+* limiteed trainng resources
+* get better results faster (maybe)
+
+![swappy-20231013-082649.png](attachment:swappy-20231013-082649.png)
+
+#### 30 days is actually a smalll amount of time for large ML models, it is actually a small amount of time
+##### hugging face BLOOM took about 3.5 months to train
+
+#### how much would it cost us?
+##### 30 days of TPUv3 (8 cores) would cost us ($8/hr): 5760 USD
+
+```py
+# get pretrainedd wieghts for vit/b
+pretrained_vit_weights = torchvision.models.ViT_B_16_Weights.DEFAULT #default = best available weights
+
+#set up a vit model instance with pretrained weights
+pretrained_vit = torchvision.models.vit_b_16(weights=pretrained_vit_weights).to(device)
+pretrained_vit
+```
+
+VisionTransformer(
+  (conv_proj): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+  (encoder): Encoder(
+    (dropout): Dropout(p=0.0, inplace=False)
+    (layers): Sequential(
+      (encoder_layer_0): EncoderBlock(
+        (ln_1): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
+        )
+        (dropout): Dropout(p=0.0, inplace=False)
+        (ln_2): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (mlp): MLPBlock(
+          (0): Linear(in_features=768, out_features=3072, bias=True)
+          (1): GELU(approximate='none')
+          (2): Dropout(p=0.0, inplace=False)
+          (3): Linear(in_features=3072, out_features=768, bias=True)
+          (4): Dropout(p=0.0, inplace=False)
+        )
+      )
+      (encoder_layer_1): EncoderBlock(
+        (ln_1): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
+        )
+...
+  )
+  (heads): Sequential(
+    (head): Linear(in_features=768, out_features=1000, bias=True)
+  )
+)
