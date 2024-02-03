@@ -532,3 +532,280 @@ $D$ in our case is the embedding dimensions here [768]
 ![swappy-20231003-192146.png](attachment:swappy-20231003-192146.png)
        
         * when we normalize along the embedding dimension, it's like making all of the steps in the staircase to the same size
+
+in docs:
+- no of patches = sequence 
+- features = embedding dimension
+
+```py
+## creating a multihead self attentionlayer in pytorch
+class MultiHeadSelfAttentionBlock(nn.Module):
+    """creates a multihead self attention block (MSA block)
+    """
+    def __init__(self,
+                 embedding_dimension: int=768, #Hidden size D (embedding dimension) from table 1 for ViT _base
+                 num_heads: int=12, #heads from table 1 for ViTbase
+                 attn_dropout: int=0):#dropout is only used for dense layer/ fully coneccted/ linaer/ feed forward. but not for QKV projections 
+                                        #ie we are not gonna use dropout for our MSA block
+        super().__init__()
+    #create the norm layer (LN)
+        self.layer_norm = nn.LayerNorm( 
+            normalized_shape=embedding_dimension#check pytroch docs
+        )
+        
+        self.multihead_attn = nn.MultiheadAttention(
+            embed_dim=embedding_dimension, # hidden size D (embedding dimension) from table 1 for ViT-base
+            num_heads=num_heads, #no of MSA heads
+            dropout=attn_dropout, #zero
+            batch_first=True #batch_first – If True, then the input and output tensors are provided as (batch, no of patches or sequence, features or embedding dimension). Default: False (seq, batch, feature) #from pytorch docs
+        )
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor: # Q,K and V are x: they are different instances of the same vector
+        x = self.layer_norm(x)
+        attn_output, _ =  self.multihead_attn(query=x,
+                                                key=x,
+                                                value=x,
+                                                need_weights=False)                  # u can also get attn_weights ie weights of the attention layer #check the docs.
+        return attn_output
+
+```
+```py
+# create an instance MSA block
+multihead_self_attention_block = MultiHeadSelfAttentionBlock(
+    embedding_dimension=768,
+    num_heads=12,
+    attn_dropout=0
+)
+
+#pass the patch and position image embedding sequence thourgh our MSA Block
+patched_image_through_msa_block = multihead_self_attention_block(patch_and_position_embedding)
+print(f"Input shape of MSA bock: {patch_and_position_embedding.shape}")
+print(f"Output shape of MSA block; {patched_image_through_msa_block.shape}")
+```
+Input shape of MSA bock: torch.Size([1, 197, 768])
+Output shape of MSA block; torch.Size([1, 197, 768])
+
+## even tho the shapes haven't changed maybe the values changed??
+
+```py
+patch_and_position_embedding 
+```
+tensor([[[2.0000, 2.0000, 2.0000,  ..., 2.0000, 2.0000, 2.0000],
+         [0.4842, 1.1071, 0.9806,  ..., 1.2911, 0.8060, 1.1216],
+         [0.4619, 0.9047, 0.8579,  ..., 1.3663, 0.9612, 1.4155],
+         ...,
+         [0.4886, 1.0627, 0.8966,  ..., 1.3370, 0.7364, 1.2223],
+         [0.6908, 1.0200, 0.9475,  ..., 1.2131, 0.8064, 1.1861],
+         [0.8316, 1.0010, 0.9662,  ..., 1.0398, 0.9115, 1.1034]]],
+       grad_fn=<AddBackward0>)
+
+```py
+#output
+patched_image_through_msa_block
+```
+tensor([[[-0.1992, -0.1785,  0.0754,  ..., -0.3689,  0.8296, -0.4426],
+         [-0.1836, -0.1788,  0.0768,  ..., -0.3568,  0.8418, -0.4648],
+         [-0.1715, -0.1662,  0.0784,  ..., -0.3658,  0.8433, -0.4552],
+         ...,
+         [-0.1745, -0.1771,  0.0726,  ..., -0.3638,  0.8436, -0.4722],
+         [-0.1707, -0.1792,  0.0704,  ..., -0.3669,  0.8461, -0.4732],
+         [-0.1732, -0.1884,  0.0665,  ..., -0.3622,  0.8442, -0.4701]]],
+       grad_fn=<TransposeBackward0>)
+
+```py
+patched_image_through_msa_block == patch_and_position_embedding
+```
+tensor([[[False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False],
+         ...,
+         [False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False]]])
+
+## how do we add the skip/residual connection in this?
+
+>## Equation 3: Multilayer perceptron block (MLP block)
+![image-1.png](attachment:image-1.png)
+
+### **MLP** contains two layers with a GELU non-linearlity(mentioned above)
+
+    * MLP = a quite broad term for a block with a series of layer(s), ayers can be multiple or even only one hidden layer.
+    * layers can mean: fully connected/ dense/ linear/ feed-forward, all are often similar names for the same thing. 
+    In pytorch theyre called `torch.nn.Linear`.
+    In tensorflow theyre called `tf.keras.dense
+**MLP_size / number of hidden units of MLP** = 3072 for ViT-Base (from table 1)
+
+![image-3.png](attachment:image-3.png)
+
+### [what is **GELU** non linearity](https://paperswithcode.com/method/gelu) 
+![swappy-20231003-225340.png](attachment:swappy-20231003-225340.png)
+
+    * the standard Gaussian cumulative distribution function. The GELU nonlinearity weights inputs by their percentile, rather than gates inputs by their sign as in ReLUs (). 
+    * Consequently the GELU can be thought of as a smoother ReLU.
+    * applies the Gaussin Error Linear Units Functions (GELU)
+
+**Dropout** is applied after every linear layer in MLP
+
+    * value for dropout is available at table 3 Dropout = 0.1 for Vit/b-16
+
+![swappy-20231003-231246.png](attachment:swappy-20231003-231246.png)
+
+In pseudocode:
+```py
+#MLP block
+x = layer norm -> linear layer -> non-linear layer -> dropout -> linear layer -> dropout
+```
+
+```py
+class MLPBlock(nn.Module):
+    def __init__(self,
+                 embedding_dim: int=768,
+                 mlp_size: int=3072,
+                 dropout: float=0.1
+                 ):
+        super().__init__()
+        #creat the norm layer (LN)
+        self.layer_norm = nn.LayerNorm(
+            normalized_shape=embedding_dim
+        )
+        
+        #creat eh MLP
+        self.mlp = nn.Sequential(
+            nn.Linear(in_features=embedding_dim,
+                      out_features=mlp_size), #project to a larger size # to hopfully capture some fore information 
+            nn.GELU(),
+            nn.Dropout(
+                p=dropout
+            ),
+            nn.Linear(in_features=mlp_size,
+                      out_features=embedding_dim), #squeeze it back to the embedding dimension 
+            nn.Dropout(
+                p=dropout
+            )
+        )
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.layer_norm(x)
+        x = self.mlp(x)
+        return x
+        #return self.mlp(self.layer_norm(x) #same as above# this will benefit from operator fusion 
+```
+
+### side track:  https://horace.io/brrr_intro.html || checkout torch.compile feature that leverages operator fusion mentioned above
+
+```py
+#create an instance of MLP block
+mlp_block = MLPBlock(embedding_dim=768, #talble 1 value
+                     mlp_size=3072, #table 1 value
+                     dropout=0.1) #table 3 value
+
+#pass ouot through the MLP block
+patched_image_through_mlp_block = mlp_block(patched_image_through_msa_block)
+print(f"Input shape of the MLP block: {patched_image_through_msa_block.shape}")
+print(f"Output shape of the  MLP blcok: {patched_image_through_mlp_block.shape}")
+```
+Input shape of the MLP block: torch.Size([1, 197, 768])
+Output shape of the  MLP blcok: torch.Size([1, 197, 768])
+
+```py
+#the variables have changed even though the values are the same
+patched_image_through_mlp_block == patched_image_through_msa_block
+```
+tensor([[[False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False],
+         ...,
+         [False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False],
+         [False, False, False,  ..., False, False, False]]])
+
+## this is not really the correct order of doing things as we havent added the residual connections yet
+## we are just creating modules of the final product
+
+># creating the transformer encoder (with residual connections)
+The transfformer encoder is a combination of alternating blocks of MSA blocks and MLP blocks
+LN is applied between every block, and residual connections after every block
+
+![image.png](attachment:image.png)
+
+**encoder** = turn a sequence into a laernable representation
+
+**decoder** = turna learnable representation to some sort of sequence
+
+encoders in NLP converts text(sequence) into numbers 
+decoders decontructs encoded numbers into text (sequence) (in a translator)
+
+### also known as Seq2Seq
+seq2seq is a ml model usually used in NLP. This is also where our transformer came from ie NLP which has `encoders as well as decoders`
+
+thats were our name transformer `encoder` comes from, 
+since our goal is image `classification` instead of a decoder we use an `MLP` instead of an `Decoder`
+
+* residual connnections = add alyer(s) input to its subsequent output, 
+this enables the creation of deeper networks (prevents weights from getting too small ie preventing `spare networks` or `vanishing gradient problem`)
+
+In pseudo:
+```python
+#transfomer encoder:
+x_input (output/sequence of embedding patches) -> MSA_Block -> [MSA_Block + x_input (residual)] -> MLP_Block -> [MLP_block_output + (MSA_block_output + x_input) ] -> ...
+```
+
+>### method 1:coding in the transformer block (puting it all together)
+
+```py
+class TransformerEncoderBlock(nn.Module):
+    """creates a transformer block instance"""
+    def __init__(self,
+                 embedding_dim:int=768, # hidden size D from Table 1 for ViT-Base
+                 num_heads:int=12, # heads from Table 1 for ViT-Base
+                 mlp_size:int=3072, # MLP size from Table 1 for ViT-Base
+                 mlp_dropout:float=0.1, # dropout for dense layers from Table 3 for ViT-Base
+                 attn_dropout:float=0): # dropout for attention layers
+        super().__init__()
+
+        # 3. Create MSA block (equation 2)
+        self.msa_block = MultiHeadSelfAttentionBlock(embedding_dimension=embedding_dim,
+                                                     num_heads=num_heads,
+                                                     attn_dropout=attn_dropout)
+        
+        # 4. Create MLP block (equation 3)
+        self.mlp_block =  MLPBlock(embedding_dim=embedding_dim,
+                                   mlp_size=mlp_size,
+                                   dropout=mlp_dropout)
+        
+    # 5. Create a forward() method  
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        
+        # 6. Create residual connection for MSA block (add the input to the output)
+        x =  self.msa_block(x) + x 
+        # 7. Create residual connection for MLP block (add the input to the output)
+        x = self.mlp_block(x) + x 
+        
+        return x
+```
+
+```py
+#create an instance of TransformerEncoderBlock()
+transformer_encoder_block = TransformerEncoderBlock()
+transformer_encoder_block
+```
+
+TransformerEncoderBlock(
+  (msa_block): MultiHeadSelfAttentionBlock(
+    (layer_norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (multihead_attn): MultiheadAttention(
+      (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
+    )
+  )
+  (mlp_block): MLPBlock(
+    (layer_norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (mlp): Sequential(
+      (0): Linear(in_features=768, out_features=3072, bias=True)
+      (1): GELU(approximate='none')
+      (2): Dropout(p=0.1, inplace=False)
+      (3): Linear(in_features=3072, out_features=768, bias=True)
+      (4): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
