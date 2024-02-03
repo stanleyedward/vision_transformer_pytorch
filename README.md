@@ -1030,3 +1030,110 @@ class_embedding.shape, class_embedding_expanded.shape
 #we've expanded thhe class_token embedding across every image in a batch
 ```
 (torch.Size([1, 1, 768]), torch.Size([32, 1, 768]))
+
+## in equation 4 
+![image-1.png](attachment:image-1.png)
+## u can see we only want to pass the classification token as it says (z^0 L) [z zeroth of the last token]
+this is why the figure has an arrow only on the last token here at the classification token, ie we only want to pass the classicatino token into the MLP head
+- "the classficaiton head is implemeneted by a MLP iwth one hidden layer at pre-training time and by a single linear layer at fine-tuning time"
+
+![image-2.png](attachment:image-2.png)
+
+## oddly enough the equation 4 doesnt mention an MLP layer, but the presence of an MLP layer at the end is implied throughout the paper
+
+>## instantiating the ViT class
+```py
+vit = ViT()
+vit
+```
+ViT(
+  (embedding_dropout): Dropout(p=0.1, inplace=False)
+  (patch_embedding): PatchEmbedding(
+    (patcher): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+    (flatten): Flatten(start_dim=2, end_dim=3)
+  )
+  (transformer_encoder): Sequential(
+    (0): TransformerEncoderBlock(
+      (msa_block): MultiHeadSelfAttentionBlock(
+        (layer_norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (multihead_attn): MultiheadAttention(
+          (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
+        )
+      )
+      (mlp_block): MLPBlock(
+        (layer_norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): Sequential(
+          (0): Linear(in_features=768, out_features=3072, bias=True)
+          (1): GELU(approximate='none')
+          (2): Dropout(p=0.1, inplace=False)
+          (3): Linear(in_features=3072, out_features=768, bias=True)
+          (4): Dropout(p=0.1, inplace=False)
+        )
+      )
+    )
+...
+  (classifier): Sequential(
+    (0): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (1): Linear(in_features=768, out_features=1000, bias=True)
+  )
+)
+
+beautiful.
+
+```py
+helper_functions.set_seeds()
+
+#create a random image tensor with same shape as asingle image
+random_image_tensor = torch.randn(size=(1,3,224,224))
+
+#create a instace of ViT with the no of class we're working with (pizza, steak and sushi) ie 3
+vit = ViT(num_classes=len(class_names))
+
+#pass the random tensor though our vit instance
+vit_output = vit(random_image_tensor)
+vit_output, vit_output.shape
+```
+(tensor([[-0.2377,  0.7360,  1.2137]], grad_fn=<AddmmBackward0>),
+ torch.Size([1, 3]))
+
+ #### we get only 3 classes as expected
+
+ ### getting a visual summary of our model
+
+ ```py
+ summary(model=ViT(num_classes=len(class_names)),
+        input_size=(1,3, 224, 224), #<- [B,C,H,W]
+        col_names=["input_size", 'output_size', 'num_params', 'trainable'],
+        col_width=20,
+        row_settings=['var_names']) 
+```
+============================================================================================================================================
+Layer (type (var_name))                                      Input Shape          Output Shape         Param #              Trainable
+============================================================================================================================================
+ViT (ViT)                                                    [1, 3, 224, 224]     [1, 3]               152,064              True
+├─PatchEmbedding (patch_embedding)                           [1, 3, 224, 224]     [1, 196, 768]        --                   True
+│    └─Conv2d (patcher)                                      [1, 3, 224, 224]     [1, 768, 14, 14]     590,592              True
+│    └─Flatten (flatten)                                     [1, 768, 14, 14]     [1, 768, 196]        --                   --
+├─Dropout (embedding_dropout)                                [1, 197, 768]        [1, 197, 768]        --                   --
+├─Sequential (transformer_encoder)                           [1, 197, 768]        [1, 197, 768]        --                   True
+│    └─TransformerEncoderBlock (0)                           [1, 197, 768]        [1, 197, 768]        --                   True
+│    │    └─MultiHeadSelfAttentionBlock (msa_block)          [1, 197, 768]        [1, 197, 768]        2,363,904            True
+│    │    └─MLPBlock (mlp_block)                             [1, 197, 768]        [1, 197, 768]        4,723,968            True
+...
+│    └─TransformerEncoderBlock (11)                          [1, 197, 768]        [1, 197, 768]        --                   True
+│    │    └─MultiHeadSelfAttentionBlock (msa_block)          [1, 197, 768]        [1, 197, 768]        2,363,904            True
+│    │    └─MLPBlock (mlp_block)                             [1, 197, 768]        [1, 197, 768]        4,723,968            True
+├─Sequential (classifier)                                    [1, 768]             [1, 3]               --                   True
+│    └─LayerNorm (0)                                         [1, 768]             [1, 768]             1,536                True
+│    └─Linear (1)                                            [1, 768]             [1, 3]               2,307                True
+============================================================================================================================================
+Total params: 85,800,963
+Trainable params: 85,800,963
+Non-trainable params: 0
+Total mult-adds (M): 172.47
+============================================================================================================================================
+Input size (MB): 0.60
+Forward/backward pass size (MB): 102.88
+Params size (MB): 229.20
+Estimated Total Size (MB): 332.69
+============================================================================================================================================
