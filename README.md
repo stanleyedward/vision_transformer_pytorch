@@ -1302,3 +1302,165 @@ VisionTransformer(
     (head): Linear(in_features=768, out_features=1000, bias=True)
   )
 )
+
+### the architecture is one build by the pytorch team, which may be different from ours
+
+### to freeze the base params so the gradients dont update during trianing
+
+```py
+for param in pretrained_vit.parameters():
+    param.requires_grad = False
+    
+#update the classifier head
+set_seeds()
+pretrained_vit.heads = nn.Linear(in_features=768, out_features=len(class_names)).to(device) #also makes it trainable
+```
+
+============================================================================================================================================
+Layer (type (var_name))                                      Input Shape          Output Shape         Param #              Trainable
+============================================================================================================================================
+VisionTransformer (VisionTransformer)                        [1, 3, 224, 224]     [1, 3]               768                  Partial
+├─Conv2d (conv_proj)                                         [1, 3, 224, 224]     [1, 768, 14, 14]     (590,592)            False
+├─Encoder (encoder)                                          [1, 197, 768]        [1, 197, 768]        151,296              False
+│    └─Dropout (dropout)                                     [1, 197, 768]        [1, 197, 768]        --                   --
+│    └─Sequential (layers)                                   [1, 197, 768]        [1, 197, 768]        --                   False
+│    │    └─EncoderBlock (encoder_layer_0)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_1)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_2)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_3)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_4)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_5)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_6)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_7)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_8)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_9)                   [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_10)                  [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    │    └─EncoderBlock (encoder_layer_11)                  [1, 197, 768]        [1, 197, 768]        (7,087,872)          False
+│    └─LayerNorm (ln)                                        [1, 197, 768]        [1, 197, 768]        (1,536)              False
+├─Linear (heads)                                             [1, 768]             [1, 3]               2,307                True
+============================================================================================================================================
+Total params: 85,800,963
+Trainable params: 2,307
+Non-trainable params: 85,798,656
+Total mult-adds (M): 172.47
+============================================================================================================================================
+Input size (MB): 0.60
+Forward/backward pass size (MB): 104.09
+Params size (MB): 229.20
+Estimated Total Size (MB): 333.89
+============================================================================================================================================
+
+### Number of params in the pretrained ViT is the same as our ViT model : 85,800,963
+
+### preparing data for the ViT model
+When using a pretrained model we want to make sure our data is formatted same way the pretrained model was trained on
+
+[VIT/B-16](https://pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html#vit-b-16)
+
+![swappy-20231013-085215.png](attachment:swappy-20231013-085215.png)
+
+```py
+#get automatic transforms fromm pretrained VIT weights
+vit_transforms = pretrained_vit_weights.transforms()
+vit_transforms
+```
+ImageClassification(
+    crop_size=[224]
+    resize_size=[256]
+    mean=[0.485, 0.456, 0.406]
+    std=[0.229, 0.224, 0.225]
+    interpolation=InterpolationMode.BILINEAR
+)
+
+```py
+#setup dataloaders
+from pytorch_modules.modules import data_preprocess
+train_dataloader_pretrained, test_dataloader_pretrained, class_names = data_preprocess.create_dataloaders(train_dir=train_dir,
+                                                                                                          test_dir=test_dir,
+                                                                                                          transform=vit_transforms,
+                                                                                                          batch_size=32, #could set a higher batch_size because using a pretrained model ( not many weightupdate needed) only have to update the MLP head weights as rest are untrainable
+                                                                                                          )
+train_dataloader_pretrained, test_dataloader_pretrained, class_names
+```
+
+(<torch.utils.data.dataloader.DataLoader at 0x7fc9e0af7a50>,
+ <torch.utils.data.dataloader.DataLoader at 0x7fc9e0c5be50>,
+ ['pizza', 'steak', 'sushi'])
+
+ ### train the feature extractor ViT model
+
+ ```py
+ from pytorch_modules.modules import train_engine
+
+#create optim and loss
+optimizer = torch.optim.Adam(params=pretrained_vit.parameters(),
+                             lr=1e-3)
+loss_fn = torch.nn.CrossEntropyLoss()
+
+#train the classifier head of the pretrained vit:
+set_seeds()
+pretrained_vit_results = train_engine.train(model=pretrained_vit,
+                                            train_dataloader=train_dataloader_pretrained,
+                                            test_dataloader=test_dataloader_pretrained,
+                                            optimizer=optimizer,
+                                            loss_fn=loss_fn,
+                                            epochs=10,
+                                            device=device,
+                                            writer=None)
+```
+
+Epoch: 1 | train_loss: 0.7663 | train_acc: 0.7188 | test_loss: 0.5435 | test_acc: 0.8769
+Epoch: 2 | train_loss: 0.3436 | train_acc: 0.9453 | test_loss: 0.3257 | test_acc: 0.8977
+Epoch: 3 | train_loss: 0.2068 | train_acc: 0.9492 | test_loss: 0.2698 | test_acc: 0.9186
+Epoch: 4 | train_loss: 0.1557 | train_acc: 0.9609 | test_loss: 0.2414 | test_acc: 0.9186
+Epoch: 5 | train_loss: 0.1244 | train_acc: 0.9727 | test_loss: 0.2271 | test_acc: 0.8977
+Epoch: 6 | train_loss: 0.1210 | train_acc: 0.9766 | test_loss: 0.2122 | test_acc: 0.9280
+Epoch: 7 | train_loss: 0.0933 | train_acc: 0.9766 | test_loss: 0.2342 | test_acc: 0.8883
+Epoch: 8 | train_loss: 0.0793 | train_acc: 0.9844 | test_loss: 0.2268 | test_acc: 0.9081
+Epoch: 9 | train_loss: 0.1084 | train_acc: 0.9883 | test_loss: 0.2064 | test_acc: 0.9384
+Epoch: 10 | train_loss: 0.0646 | train_acc: 0.9922 | test_loss: 0.1795 | test_acc: 0.9176
+
+![Alt text](images/train_results.png)
+
+### looking pretty darn good!
+thats the power of transfer learning we managed to outperform our older model in no amount of time
+
+#### save our best performing vit model
+now we've got a model that performs quite well, how about we save it to file then check it's filesize.
+
+we want tot check the filesize because if we wanted to delpoy a model to website/mobile app, we may limitations o n the size of the model we can deploy.
+
+Eg: smalller model way be required to due compute restrictions
+
+
+```py
+#saving the model
+from pytorch_modules.modules import utils
+utils.save_model(model=pretrained_vit,
+                 target_dir="models",
+                 model_name="pretrained_vit_feature_extractor.pth")
+```
+[INFO] Saving model to: models/pretrained_vit_feature_extractor.pth
+
+```py
+from pathlib import Path
+#get the model size in bytes and then convert to megabytes
+pretrained_vit_model_size = Path('models/pretrained_vit_feature_extractor.pth').stat().st_size // (1024**2)
+print(f"Pretrained ViT model size: {pretrained_vit_model_size} MB")
+```
+
+Pretrained ViT model size: 327 MB
+
+### larger models might be hard to deploy, and might take longer to predict
+
+>## predicting on a custom image
+
+```py
+from helper_functions import pred_and_plot_image
+pred_and_plot_image(model=pretrained_vit,
+                    image_path='images/piza.jpg',
+                    class_names=class_names)
+```
+![Alt text](images/custom_prediction.png)
+
+hell yea
