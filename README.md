@@ -809,3 +809,224 @@ TransformerEncoderBlock(
     )
   )
 )
+
+## get summary of the model using `torchinfo`
+
+```py
+rand_tensor = torch.randn(size=(1,197,768))
+transformer_encoder_block(rand_tensor).shape
+
+from torchinfo import summary
+
+summary(model=transformer_encoder_block,
+        input_size=(1,197,768), #<- the size of the output of the embedded patches and NOT the original image size
+        col_names=["input_size", 'output_size', 'num_params', 'trainable'],
+        col_width=20,
+        row_settings=['var_names']) 
+
+```
+
+==================================================================================================================================
+Layer (type (var_name))                            Input Shape          Output Shape         Param #              Trainable
+==================================================================================================================================
+TransformerEncoderBlock (TransformerEncoderBlock)  [1, 197, 768]        [1, 197, 768]        --                   True
+├─MultiHeadSelfAttentionBlock (msa_block)          [1, 197, 768]        [1, 197, 768]        --                   True
+│    └─LayerNorm (layer_norm)                      [1, 197, 768]        [1, 197, 768]        1,536                True
+│    └─MultiheadAttention (multihead_attn)         --                   [1, 197, 768]        2,362,368            True
+├─MLPBlock (mlp_block)                             [1, 197, 768]        [1, 197, 768]        --                   True
+│    └─LayerNorm (layer_norm)                      [1, 197, 768]        [1, 197, 768]        1,536                True
+│    └─Sequential (mlp)                            [1, 197, 768]        [1, 197, 768]        --                   True
+│    │    └─Linear (0)                             [1, 197, 768]        [1, 197, 3072]       2,362,368            True
+│    │    └─GELU (1)                               [1, 197, 3072]       [1, 197, 3072]       --                   --
+│    │    └─Dropout (2)                            [1, 197, 3072]       [1, 197, 3072]       --                   --
+│    │    └─Linear (3)                             [1, 197, 3072]       [1, 197, 768]        2,360,064            True
+│    │    └─Dropout (4)                            [1, 197, 768]        [1, 197, 768]        --                   --
+==================================================================================================================================
+Total params: 7,087,872
+Trainable params: 7,087,872
+Non-trainable params: 0
+Total mult-adds (M): 4.73
+==================================================================================================================================
+Input size (MB): 0.61
+Forward/backward pass size (MB): 8.47
+Params size (MB): 18.90
+Estimated Total Size (MB): 27.98
+==================================================================================================================================
+
+### as u can see it expands in the MLP layer then compresses back, might be able to identify more features
+### this is just one TransformerEncoderBlock the ViT model had multiple.
+- ### residual or skip connections : where first introduced in resnet architectures 
+
+## method 2:there is a trick we can do with pytorch to make the implementation even smaller
+since how good the transformer arch is, pytorch has implemented ready to use transformer encoder layers
+![swappy-20231004-224819.png](attachment:swappy-20231004-224819.png)
+
+### craete  a tranformer encoder layer with inbuilt pytorch transformer layers
+
+#create the same as above with torch.nn.TransformerEncoderLayer()
+torch_transformer_encoder_layer = nn.TransformerEncoderLayer(d_model=768,# embedding dimension/size from table 1
+                                                             nhead=12, #no of heads from table 1
+                                                             dim_feedforward=3072, # MLP size from table 1
+                                                             dropout=0.1, #fro table 3
+                                                             activation='gelu',
+                                                             batch_first=True,
+                                                             norm_first=True # Layer Norm is First if True, default is false
+                                                             )
+# this is implementing Eq2 and eq3 at the same time
+torch_transformer_encoder_layer
+
+TransformerEncoderLayer(
+  (self_attn): MultiheadAttention(
+    (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
+  )
+  (linear1): Linear(in_features=768, out_features=3072, bias=True)
+  (dropout): Dropout(p=0.1, inplace=False)
+  (linear2): Linear(in_features=3072, out_features=768, bias=True)
+  (norm1): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+  (norm2): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+  (dropout1): Dropout(p=0.1, inplace=False)
+  (dropout2): Dropout(p=0.1, inplace=False)
+)
+
+
+```py
+summary(model=torch_transformer_encoder_layer,
+        input_size=(1,197,768), #<- the size of the output of the embedded patches and NOT the original image size
+        col_names=["input_size", 'output_size', 'num_params', 'trainable'],
+        col_width=20,
+        row_settings=['var_names']) 
+```
+==================================================================================================================================
+Layer (type (var_name))                            Input Shape          Output Shape         Param #              Trainable
+==================================================================================================================================
+TransformerEncoderLayer (TransformerEncoderLayer)  [1, 197, 768]        [1, 197, 768]        7,087,872            True
+==================================================================================================================================
+Total params: 7,087,872
+Trainable params: 7,087,872
+Non-trainable params: 0
+Total mult-adds (M): 0.00
+==================================================================================================================================
+Input size (MB): 0.61
+Forward/backward pass size (MB): 0.00
+Params size (MB): 0.00
+Estimated Total Size (MB): 0.61
+==================================================================================================================================
+
+The output of the summary is slightly different to ours due to how torch.nn.TransformerEncoderLayer() constructs its layer.
+
+But the layers it uses, number of parameters and input and output shapes are the same.
+
+
+    Less prone to errors - Generally, if a layer makes it into the PyTorch standard library, its been tested and tried to work.
+    Potentially better performance - as of now, the PyTorch implemented version of torch.nn.TransformerEncoderLayer() can see a speedup of more than 2x on many common workloads.
+    they generally have a smaller forward/backward pass size
+
+then why did we spend all the time recreating the encoder piece by piece instead of just using the inbuilt function? to know how things work in the background and practise
+
+## if you wanted to stack multiple tranformer encoder layers u can use:
+
+![swappy-20231004-230731.png](attachment:swappy-20231004-230731.png)
+### as u can see in the ViT/B-16 There are 12 layers ( from table 1)
+![image-3.png](attachment:image-3.png)
+
+>## putting it all together (along with equation 4)
+![image-1.png](attachment:image-1.png)
+
+>## ViT architecture.
+
+```py
+#create a ViT class
+class ViT(nn.Module):
+    def __init__(self,
+                 img_size:int=224, #table 3 from the ViT paper
+                 in_channels:int=3, #as were dealing with colored images
+                 patch_size:int=16,# need patchsze to be compatible with img_size (add assetion)
+                 num_transformer_layers:int=12,#heads / transformer layerstable 1 for layers in ViT_base
+                 embedding_dimension:int=768, #hidden_size D from table 1 for ViTBase
+                 mlp_size:int=3072, #mlp hidden unit size table 1
+                 attn_dropout:int=0,
+                 mlp_dropout:float=0.1,
+                 embedding_dropout:float=0.1, #dropout for patch and position embedddings #check experiment details B.!
+                 num_classes:int=1000 #num of classes in our classification problem #set to a 1000 as original ViT was trained on imagenet 
+                 ):
+        super().__init__()
+        
+        #make an assertion to check if image size is compatible witht he patchsize
+        assert img_size % patch_size == 0, f"Image size must be divisble by patch size, img_size: {img_size}, patch_size {patch_size}"
+        
+        #calc the no o fpaches (height * width / patch_size **2)
+        self.num_patches = (img_size * img_size)// patch_size**2 #HW/PP make sure you have // to floor
+        
+        #create learnable class embedding #needs to go at front of seqience of patch embeddings
+        self.class_embedding = nn.Parameter(data=torch.randn(1, 1, embedding_dimension), #remeber we made it with torch.ones before? now its randn
+                                            requires_grad=True) #make it trainable ie update params with optimizer 
+        
+        #create learning position embedding
+        self.position_embeddding = nn.Parameter(data=torch.randn(1, self.num_patches+1, embedding_dimension))
+        
+        #cerae embedding dorpout value
+        self.embedding_dropout = nn.Dropout(p=embedding_dropout)
+        
+        #create create patch_embedding_layer
+        self.patch_embedding = PatchEmbedding(in_channels=in_channels,
+                                              patch_size=patch_size,
+                                              embedding_dim=embedding_dimension)
+        # you can probably modularity this previous block and amke it much easier to create a patch embedding layer
+        
+        #crete the transformer encoder block
+        #to stack 12 of them on top of eaceh oterh in a manual way
+        self.transformer_encoder = nn.Sequential(*[TransformerEncoderBlock(embedding_dim=embedding_dimension,
+                                                                           num_heads=num_transformer_layers,
+                                                                           mlp_size=mlp_size,
+                                                                           mlp_dropout=mlp_dropout) for _ in range(num_transformer_layers)]) # '*' means all of the layers in this comprehension that gets turned into a sequential block
+        
+        #create classifier head
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(normalized_shape=embedding_dimension),
+            nn.Linear(in_features=embedding_dimension, #becaus ethe output of the transformerencodinng block is going to have  adim size of embedding dim
+                      out_features=num_classes) #since this the final output layer we need out features equal to the number of classes
+        )
+        
+        
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        #EQUATION 1
+        #get the batch)size
+        batch_size = x.shape[0] #why hardcore when manipulate the data 
+        
+        #unlike in the paper we arent using 4096 batch_size because of hardware limitations
+        #create class token embedding and expand it to match the batch_size ( equation 1)
+        class_token = self.class_embedding.expand(batch_size, -1, -1) # "-1" means to infer the dimension #check cell below
+        
+        #create patch_embedding
+        x = self.patch_embedding(x)
+        
+        #concat class token embedding and patch_embedding
+        x = torch.concat((class_token, x), dim=1) #(batchsize, no of patches, embedding_dim)
+        
+        #add the position embeddding to class token and patch_embedding
+        x = self.position_embeddding + x
+        
+        #Run embedding dropout # when used is applied after every linear layer expect KQV projects /output ie MSA projections
+        #and directly after adding positional to patch embeddings: from EXPERMENT DETAILS B.1
+        x = self.embedding_dropout(x)
+        
+        #EQUATION 2 AND 3
+        #pass our position and patch_embedding into our transformer encoder 
+        x = self.transformer_encoder(x)
+        
+        #EQUATION 4
+        #put 0th index logit through the classifier 
+        x = self.classifier(x[:, 0]) # every batch, and the zeroth index 
+        
+        return x
+```
+```py
+batch_size = 32
+embedding_dimension = 768
+class_embedding = nn.Parameter(data=torch.randn(1, 1, embedding_dimension), #remeber we made it with torch.ones before? now its randn
+                                            requires_grad=True) #make it trainable ie update params with optimizer 
+class_embedding_expanded = class_embedding.expand(batch_size, -1, -1) #"-1"  means to infer the dimensions
+class_embedding.shape, class_embedding_expanded.shape
+#we've expanded thhe class_token embedding across every image in a batch
+```
+(torch.Size([1, 1, 768]), torch.Size([32, 1, 768]))
