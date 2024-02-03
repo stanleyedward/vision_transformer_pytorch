@@ -62,7 +62,6 @@ y = MLP(LN_layer(x_output_MLP_block))
 ```
 
 ### table 1/3:
-<!-- ![Alt text](image-3.png) -->
 ![Alt text](images/image-3.png)
 
 #### all different sizes of the same model
@@ -245,6 +244,19 @@ flatten_layer(image_out_of_conv).shape #the order is still not w
 ```
 torch.Size([1, 768, 196])
 
+
+```py
+print(f"Originval image shape: {image.shape}")
+
+#turn image into faeture maps
+image_out_of_conv = conv2d(image.unsqueeze(0))#add batch dim
+print(f"image feature map (patches) shape: {image_out_of_conv.shape}")
+
+#flatten the faeture maps
+image_out_of_conv_flattened = flatten_layer(image_out_of_conv)
+print(f"Flattened image feature map shape : {image_out_of_conv_flattened.shape}")
+```
+<pre>
 Original image shape: torch.Size([3, 224, 224])
 
 image feature map (patches) shape: torch.Size([1, 768, 14, 14])
@@ -252,6 +264,7 @@ image feature map (patches) shape: torch.Size([1, 768, 14, 14])
 Flattened image feature map shape : torch.Size([1, 768, 196])
 
 torch.Size([1, 196, 768]) -> [batchsize, num of patches, embedding dimension]
+</pre>
 
 ## ^embedding vector that one of our images is represented by, 768 of these flattened vectors
 ## these are learnable ie they are update upon training
