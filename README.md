@@ -36,7 +36,6 @@ Equation2:
 
 ```python
 x_output_MSA_block = MSA_layer(LN_layer(x_input)) + x_input 
-
 ```
 
 Equation3:
@@ -70,20 +69,21 @@ y = MLP(LN_layer(x_output_MLP_block))
 #### ViT-B/16 - ViT-Base with image patch size 16x16
 
 * layers = no. of transformers encoder layers
-* hidden size $D$  - the embedding size throughout the architecture
+* hidden size $D$  
+        - the embedding size throughout the architecture
 
-                    - if we have embedding size of 768 means 
+        - if we have embedding size of 768 means 
 
-                    - each image patch that may be 16x16 
+        - each image patch that may be 16x16 
 
-                    - is turned into a vector of size 768
+        - is turned into a vector of size 768
 
-                    - learnable vector*
-                    
+        - learnable vector*
+        
 * MLP size - no. of hidden units/neurons in the MLP
 
-            - if the MLP size is 3072 
-            - then the no of hidden units in the MLP layer in 3072
+        - if the MLP size is 3072 
+-        then the no of hidden units in the MLP layer in 3072
 
 * Heads - the number of heads within multihead self-attention layers
 
@@ -131,6 +131,7 @@ Output:
 196
 
 input shape( single@D iamge): (224, 224, 3)
+
 Output shape (single 1D sequence of pathces): (196, 768)
 
 
@@ -145,7 +146,9 @@ Original Image:
 </p>
 
 Number of parches per row: 14.0    
-Number of patches per column: 14.0        
+
+Number of patches per column: 14.0 
+       
 Patch size: 16 x 16 pixels
 
 <p align="center">
@@ -193,6 +196,30 @@ image_out_of_conv.requires_grad
 ```
 True
 
+```py
+#plot random conv feature maps (embeddings)
+import random
+random_indexes = random.sample(range(0,768), k=5)
+print(f"showing random convolutional feature maps from indexes: {random_indexes}")
+
+# cretea a plot
+fig, axis = plt.subplots(
+    nrows=1,
+    ncols=5,
+    figsize=(12,12)
+)
+
+#plot rnadom image feature maps
+for i, index in enumerate(random_indexes):
+    image_conv_feature_map = image_out_of_conv[:, index, :, :]# index on the output tensor of the conv2d layer
+    axis[i].imshow(image_conv_feature_map.squeeze().detach().numpy())#remove batch dim #remove from grad tracking/ switch to numpy for matplotlib
+    axis[i].set(
+        xticklabels=[],
+        yticklabels=[],
+        xticks=[],
+        yticks=[]
+    )
+```
 showing random convolutional feature maps from indexes: [683, 599, 74, 343, 635]
 
 <p align="center">
@@ -203,9 +230,13 @@ showing random convolutional feature maps from indexes: [683, 599, 74, 343, 635]
 right now we've got a series of conv faeture maps (patch embeddings) that we want to flatten into a sequence of patch embeddings to satusfy the criteria of the
 ViT 
 
+```py
+print(f"{image_out_of_conv.shape} -> [batch_size, embeddingdim, feature_map_height, feature_map_width]")
+```
+
 torch.Size([1, 768, 14, 14]) -> [batch_size, embeddingdim, feature_map_height, feature_map_width]
 
-### want [batch_size, num_of_patches, embeddingdim]
+### We want [batch_size, num_of_patches, embeddingdim]
 
 ```py 
 flatten_layer = nn.Flatten(start_dim=2, 
@@ -215,7 +246,9 @@ flatten_layer(image_out_of_conv).shape #the order is still not w
 torch.Size([1, 768, 196])
 
 Original image shape: torch.Size([3, 224, 224])
+
 image feature map (patches) shape: torch.Size([1, 768, 14, 14])
+
 Flattened image feature map shape : torch.Size([1, 768, 196])
 
 torch.Size([1, 196, 768]) -> [batchsize, num of patches, embedding dimension]
@@ -279,6 +312,7 @@ print(f"output patch embedding sequence shape: {patch_embedded_image.shape}")
 ```
 
 input image size: torch.Size([1, 3, 224, 224])
+
 output patch embedding sequence shape: torch.Size([1, 196, 768])
 
 
@@ -308,7 +342,7 @@ class_token.shape
 torch.Size([1, 1, 768])
 
 ### USING ONES TO MAKE IT MORE VISIBLE for learning
-### NOTe: use `randn` in practical use
+### NOTE: use `randn` in practical use
 
 ```py
 patch_embedded_image.shape
@@ -327,6 +361,7 @@ torch.Size([1, 197, 768]) -> batch_size, class_token + no_of_patches, embedding_
 ```py
 patch_embedded_image_with_class_embedding
 ```
+<pre>
 tensor([[[ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
          [-0.2044,  0.1213, -0.3727,  ..., -0.0422, -0.1065, -0.1086],
          [-0.1035, -0.0072, -0.4738,  ..., -0.0445, -0.1931,  0.1067],
@@ -335,7 +370,7 @@ tensor([[[ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
          [-0.1278,  0.0315, -0.3228,  ..., -0.0731, -0.1883, -0.0347],
          [-0.0428,  0.0037, -0.1469,  ..., -0.0665, -0.0937, -0.0178]]],
        grad_fn=<CatBackward0>)
-
+</pre>
 ## creating the position embedding
 
 want to: create a series of 1d learnable positionembedding and to add them to the sequence of patch embeddings
@@ -344,6 +379,7 @@ want to: create a series of 1d learnable positionembedding and to add them to th
 #view the sequence of patch embeddinigs withthe prepended class embeddings
 patch_embedded_image_with_class_embedding, patch_embedded_image_with_class_embedding.shape
 ```
+<pre>
 (tensor([[[ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
           [-0.2044,  0.1213, -0.3727,  ..., -0.0422, -0.1065, -0.1086],
           [-0.1035, -0.0072, -0.4738,  ..., -0.0445, -0.1931,  0.1067],
@@ -353,7 +389,7 @@ patch_embedded_image_with_class_embedding, patch_embedded_image_with_class_embed
           [-0.0428,  0.0037, -0.1469,  ..., -0.0665, -0.0937, -0.0178]]],
         grad_fn=<CatBackward0>),
  torch.Size([1, 197, 768]))
-
+</pre>
 ```py
  #calculate the N no of  patches
 num_patches = int((height * width) / patch_size**2)
@@ -368,7 +404,7 @@ position_embedding = nn.Parameter(torch.ones(batch_size, #batchsize or 1
                                   requires_grad=True) #learnable so it gets updated during training
 position_embedding, position_embedding.shape
 ```
-
+<pre>
 (Parameter containing:
  tensor([[[1., 1., 1.,  ..., 1., 1., 1.],
           [1., 1., 1.,  ..., 1., 1., 1.],
@@ -378,12 +414,14 @@ position_embedding, position_embedding.shape
           [1., 1., 1.,  ..., 1., 1., 1.],
           [1., 1., 1.,  ..., 1., 1., 1.]]], requires_grad=True),
  torch.Size([1, 197, 768]))
+</pre>
 
  Add the position embedding to the patch and class token embeddding
 
  ```py
  patch_embedded_image_with_class_embedding, patch_embedded_image_with_class_embedding.shape
  ```
+<pre>
  (tensor([[[ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
           [-0.2044,  0.1213, -0.3727,  ..., -0.0422, -0.1065, -0.1086],
           [-0.1035, -0.0072, -0.4738,  ..., -0.0445, -0.1931,  0.1067],
@@ -394,11 +432,12 @@ position_embedding, position_embedding.shape
         grad_fn=<CatBackward0>),
  torch.Size([1, 197, 768]))
 
+</pre>
 ```py
 patch_and_position_embedding = patch_embedded_image_with_class_embedding + position_embedding
 patch_and_position_embedding, patch_and_position_embedding.shape
  ```
-
+<pre>
  (tensor([[[2.0000, 2.0000, 2.0000,  ..., 2.0000, 2.0000, 2.0000],
           [0.7956, 1.1213, 0.6273,  ..., 0.9578, 0.8935, 0.8914],
           [0.8965, 0.9928, 0.5262,  ..., 0.9555, 0.8069, 1.1067],
@@ -408,8 +447,10 @@ patch_and_position_embedding, patch_and_position_embedding.shape
           [0.9572, 1.0037, 0.8531,  ..., 0.9335, 0.9063, 0.9822]]],
         grad_fn=<AddBackward0>),
  torch.Size([1, 197, 768]))
+</pre>
 
- ## as you can see all the values increased by one as we created positional embeddding with `torch.ones`
+
+## as you can see all the values increased by one as we created positional embeddding with `torch.ones`
 
 ## successfully added it to the patch_embeddings with class_token
 
@@ -459,10 +500,15 @@ patch_and_position_embedding = patch_embedding_class_token + position_embedding
 print(f"patch_and_position_embedding shape: {patch_and_position_embedding.shape}")
 ```
 Image tensor shape: torch.Size([3, 224, 224])
+
 Input image shape: torch.Size([1, 3, 224, 224])
+
 Patch embedding shape: torch.Size([1, 196, 768])
+
 class token embedding shape: torch.Size([1, 1, 768])
+
 patch_embedding with class token shape :torch.Size([1, 197, 768])
+
 patch_and_position_embedding shape: torch.Size([1, 197, 768])
 
 ># Equation 2.
@@ -520,9 +566,9 @@ to find how much related 1 patch is to another
 ## equation 2 (layer normalization) (LN block)
 * ### layer norm
 
-            - normalization technique to normalize the distributions of the intermediate layers,
-             
-            - it enables smoother gradients, faster training, and better generalization accuracy 
+        - normalization technique to normalize the distributions of the intermediate layers,
+
+        - it enables smoother gradients, faster training, and better generalization accuracy 
 - Normalization - make everything have name mean and same std deviation
 - mean and std dev are calculated over the last D dimension, where D is the dim of normalized shape
 
@@ -530,7 +576,7 @@ $D$ in our case is the embedding dimensions here [768]
 
 ![Alt text](images/swappy-20231003-192146.png)
        
-        * when we normalize along the embedding dimension, it's like making all of the steps in the staircase to the same size
+* when we normalize along the embedding dimension, it's like making all of the steps in the staircase to the same size
 
 in docs:
 - no of patches = sequence 
@@ -705,12 +751,14 @@ print(f"Input shape of the MLP block: {patched_image_through_msa_block.shape}")
 print(f"Output shape of the  MLP blcok: {patched_image_through_mlp_block.shape}")
 ```
 Input shape of the MLP block: torch.Size([1, 197, 768])
+
 Output shape of the  MLP blcok: torch.Size([1, 197, 768])
 
 ```py
 #the variables have changed even though the values are the same
 patched_image_through_mlp_block == patched_image_through_msa_block
 ```
+<pre>
 tensor([[[False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
@@ -718,7 +766,7 @@ tensor([[[False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False]]])
-
+</pre>
 ## this is not really the correct order of doing things as we havent added the residual connections yet
 ## we are just creating modules of the final product
 
@@ -739,9 +787,11 @@ decoders decontructs encoded numbers into text (sequence) (in a translator)
 seq2seq is a ml model usually used in NLP. This is also where our transformer came from ie NLP which has `encoders as well as decoders`
 
 thats were our name transformer `encoder` comes from, 
+
 since our goal is image `classification` instead of a decoder we use an `MLP` instead of an `Decoder`
 
 * residual connnections = add alyer(s) input to its subsequent output, 
+
 this enables the creation of deeper networks (prevents weights from getting too small ie preventing `spare networks` or `vanishing gradient problem`)
 
 In pseudo:
@@ -789,7 +839,7 @@ class TransformerEncoderBlock(nn.Module):
 transformer_encoder_block = TransformerEncoderBlock()
 transformer_encoder_block
 ```
-
+<pre>
 TransformerEncoderBlock(
   (msa_block): MultiHeadSelfAttentionBlock(
     (layer_norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
@@ -808,6 +858,7 @@ TransformerEncoderBlock(
     )
   )
 )
+</pre>
 
 ## get summary of the model using `torchinfo`
 
@@ -824,7 +875,7 @@ summary(model=transformer_encoder_block,
         row_settings=['var_names']) 
 
 ```
-
+<pre>
 ==================================================================================================================================
 Layer (type (var_name))                            Input Shape          Output Shape         Param #              Trainable
 ==================================================================================================================================
@@ -851,6 +902,7 @@ Forward/backward pass size (MB): 8.47
 Params size (MB): 18.90
 Estimated Total Size (MB): 27.98
 ==================================================================================================================================
+</pre>
 
 ### as u can see it expands in the MLP layer then compresses back, might be able to identify more features
 ### this is just one TransformerEncoderBlock the ViT model had multiple.
@@ -862,6 +914,7 @@ since how good the transformer arch is, pytorch has implemented ready to use tra
 
 ### craete  a tranformer encoder layer with inbuilt pytorch transformer layers
 
+```py
 #create the same as above with torch.nn.TransformerEncoderLayer()
 torch_transformer_encoder_layer = nn.TransformerEncoderLayer(d_model=768,# embedding dimension/size from table 1
                                                              nhead=12, #no of heads from table 1
@@ -873,7 +926,9 @@ torch_transformer_encoder_layer = nn.TransformerEncoderLayer(d_model=768,# embed
                                                              )
 # this is implementing Eq2 and eq3 at the same time
 torch_transformer_encoder_layer
+```
 
+<pre>
 TransformerEncoderLayer(
   (self_attn): MultiheadAttention(
     (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
@@ -886,6 +941,7 @@ TransformerEncoderLayer(
   (dropout1): Dropout(p=0.1, inplace=False)
   (dropout2): Dropout(p=0.1, inplace=False)
 )
+</pre>
 
 
 ```py
@@ -895,6 +951,7 @@ summary(model=torch_transformer_encoder_layer,
         col_width=20,
         row_settings=['var_names']) 
 ```
+<pre>
 ==================================================================================================================================
 Layer (type (var_name))                            Input Shape          Output Shape         Param #              Trainable
 ==================================================================================================================================
@@ -910,15 +967,18 @@ Forward/backward pass size (MB): 0.00
 Params size (MB): 0.00
 Estimated Total Size (MB): 0.61
 ==================================================================================================================================
+</pre>
 
 The output of the summary is slightly different to ours due to how torch.nn.TransformerEncoderLayer() constructs its layer.
 
 But the layers it uses, number of parameters and input and output shapes are the same.
 
 
-    Less prone to errors - Generally, if a layer makes it into the PyTorch standard library, its been tested and tried to work.
-    Potentially better performance - as of now, the PyTorch implemented version of torch.nn.TransformerEncoderLayer() can see a speedup of more than 2x on many common workloads.
-    they generally have a smaller forward/backward pass size
+Less prone to errors - Generally, if a layer makes it into the PyTorch standard library, its been tested and tried to work.
+
+Potentially better performance - as of now, the PyTorch implemented version of `torch.nn.TransformerEncoderLayer()` can see a speedup of more than 2x on many common workloads.
+
+they generally have a smaller forward/backward pass size
 
 then why did we spend all the time recreating the encoder piece by piece instead of just using the inbuilt function? to know how things work in the background and practise
 
@@ -1038,13 +1098,14 @@ this is why the figure has an arrow only on the last token here at the classific
 
 ![image-2.png](images/image-2.png)
 
-## oddly enough the equation 4 doesnt mention an MLP layer, but the presence of an MLP layer at the end is implied throughout the paper
+`note:` oddly enough the equation 4 doesnt mention an MLP layer, but the presence of an MLP layer at the end is implied throughout the paper
 
->## instantiating the ViT class
+## instantiating the ViT class
 ```py
 vit = ViT()
 vit
 ```
+<pre>
 ViT(
   (embedding_dropout): Dropout(p=0.1, inplace=False)
   (patch_embedding): PatchEmbedding(
@@ -1076,6 +1137,7 @@ ViT(
     (1): Linear(in_features=768, out_features=1000, bias=True)
   )
 )
+</pre>
 
 beautiful.
 
@@ -1093,19 +1155,21 @@ vit_output = vit(random_image_tensor)
 vit_output, vit_output.shape
 ```
 (tensor([[-0.2377,  0.7360,  1.2137]], grad_fn=<AddmmBackward0>),
+
  torch.Size([1, 3]))
 
- #### we get only 3 classes as expected
+#### we get only 3 classes as expected
 
- ### getting a visual summary of our model
+### getting a visual summary of our model
 
- ```py
+```py
  summary(model=ViT(num_classes=len(class_names)),
         input_size=(1,3, 224, 224), #<- [B,C,H,W]
         col_names=["input_size", 'output_size', 'num_params', 'trainable'],
         col_width=20,
         row_settings=['var_names']) 
 ```
+<pre>
 ============================================================================================================================================
 Layer (type (var_name))                                      Input Shape          Output Shape         Param #              Trainable
 ============================================================================================================================================
@@ -1136,6 +1200,7 @@ Forward/backward pass size (MB): 102.88
 Params size (MB): 229.20
 Estimated Total Size (MB): 332.69
 ============================================================================================================================================
+</pre>
 
 ## lets see if it actually works
 >## Train the ViT model.
@@ -1269,7 +1334,7 @@ pretrained_vit_weights = torchvision.models.ViT_B_16_Weights.DEFAULT #default = 
 pretrained_vit = torchvision.models.vit_b_16(weights=pretrained_vit_weights).to(device)
 pretrained_vit
 ```
-
+<pre>
 VisionTransformer(
   (conv_proj): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
   (encoder): Encoder(
@@ -1302,6 +1367,8 @@ VisionTransformer(
   )
 )
 
+</pre>
+
 ### the architecture is one build by the pytorch team, which may be different from ours
 
 ### to freeze the base params so the gradients dont update during trianing
@@ -1314,7 +1381,7 @@ for param in pretrained_vit.parameters():
 set_seeds()
 pretrained_vit.heads = nn.Linear(in_features=768, out_features=len(class_names)).to(device) #also makes it trainable
 ```
-
+<pre>
 ============================================================================================================================================
 Layer (type (var_name))                                      Input Shape          Output Shape         Param #              Trainable
 ============================================================================================================================================
@@ -1348,6 +1415,7 @@ Forward/backward pass size (MB): 104.09
 Params size (MB): 229.20
 Estimated Total Size (MB): 333.89
 ============================================================================================================================================
+</pre>
 
 ### Number of params in the pretrained ViT is the same as our ViT model : 85,800,963
 
@@ -1363,6 +1431,7 @@ When using a pretrained model we want to make sure our data is formatted same wa
 vit_transforms = pretrained_vit_weights.transforms()
 vit_transforms
 ```
+<pre>
 ImageClassification(
     crop_size=[224]
     resize_size=[256]
@@ -1370,6 +1439,7 @@ ImageClassification(
     std=[0.229, 0.224, 0.225]
     interpolation=InterpolationMode.BILINEAR
 )
+</pre>
 
 ```py
 #setup dataloaders
@@ -1381,14 +1451,15 @@ train_dataloader_pretrained, test_dataloader_pretrained, class_names = data_prep
                                                                                                           )
 train_dataloader_pretrained, test_dataloader_pretrained, class_names
 ```
-
+<pre>
 (<torch.utils.data.dataloader.DataLoader at 0x7fc9e0af7a50>,
  <torch.utils.data.dataloader.DataLoader at 0x7fc9e0c5be50>,
  ['pizza', 'steak', 'sushi'])
+</pre>
 
- ### train the feature extractor ViT model
+### train the feature extractor ViT model
 
- ```py
+```py
  from pytorch_modules.modules import train_engine
 
 #create optim and loss
@@ -1407,7 +1478,7 @@ pretrained_vit_results = train_engine.train(model=pretrained_vit,
                                             device=device,
                                             writer=None)
 ```
-
+<pre>
 Epoch: 1 | train_loss: 0.7663 | train_acc: 0.7188 | test_loss: 0.5435 | test_acc: 0.8769
 Epoch: 2 | train_loss: 0.3436 | train_acc: 0.9453 | test_loss: 0.3257 | test_acc: 0.8977
 Epoch: 3 | train_loss: 0.2068 | train_acc: 0.9492 | test_loss: 0.2698 | test_acc: 0.9186
@@ -1418,6 +1489,7 @@ Epoch: 7 | train_loss: 0.0933 | train_acc: 0.9766 | test_loss: 0.2342 | test_acc
 Epoch: 8 | train_loss: 0.0793 | train_acc: 0.9844 | test_loss: 0.2268 | test_acc: 0.9081
 Epoch: 9 | train_loss: 0.1084 | train_acc: 0.9883 | test_loss: 0.2064 | test_acc: 0.9384
 Epoch: 10 | train_loss: 0.0646 | train_acc: 0.9922 | test_loss: 0.1795 | test_acc: 0.9176
+</pre>
 
 ![Alt text](images/train_results.png)
 
@@ -1462,4 +1534,3 @@ pred_and_plot_image(model=pretrained_vit,
 ```
 ![Alt text](images/custom_prediction.png)
 
-hell yea
