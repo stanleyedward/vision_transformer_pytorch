@@ -635,6 +635,7 @@ Output shape of MSA block; torch.Size([1, 197, 768])
 ```py
 patch_and_position_embedding 
 ```
+<pre>
 tensor([[[2.0000, 2.0000, 2.0000,  ..., 2.0000, 2.0000, 2.0000],
          [0.4842, 1.1071, 0.9806,  ..., 1.2911, 0.8060, 1.1216],
          [0.4619, 0.9047, 0.8579,  ..., 1.3663, 0.9612, 1.4155],
@@ -643,11 +644,13 @@ tensor([[[2.0000, 2.0000, 2.0000,  ..., 2.0000, 2.0000, 2.0000],
          [0.6908, 1.0200, 0.9475,  ..., 1.2131, 0.8064, 1.1861],
          [0.8316, 1.0010, 0.9662,  ..., 1.0398, 0.9115, 1.1034]]],
        grad_fn=<AddBackward0>)
+</pre>
 
 ```py
 #output
 patched_image_through_msa_block
 ```
+<pre>
 tensor([[[-0.1992, -0.1785,  0.0754,  ..., -0.3689,  0.8296, -0.4426],
          [-0.1836, -0.1788,  0.0768,  ..., -0.3568,  0.8418, -0.4648],
          [-0.1715, -0.1662,  0.0784,  ..., -0.3658,  0.8433, -0.4552],
@@ -656,10 +659,11 @@ tensor([[[-0.1992, -0.1785,  0.0754,  ..., -0.3689,  0.8296, -0.4426],
          [-0.1707, -0.1792,  0.0704,  ..., -0.3669,  0.8461, -0.4732],
          [-0.1732, -0.1884,  0.0665,  ..., -0.3622,  0.8442, -0.4701]]],
        grad_fn=<TransposeBackward0>)
-
+</pre>
 ```py
 patched_image_through_msa_block == patch_and_position_embedding
 ```
+<pre>
 tensor([[[False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
@@ -667,6 +671,7 @@ tensor([[[False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False],
          [False, False, False,  ..., False, False, False]]])
+</pre>
 
 ## how do we add the skip/residual connection in this?
 
@@ -1452,8 +1457,8 @@ train_dataloader_pretrained, test_dataloader_pretrained, class_names = data_prep
 train_dataloader_pretrained, test_dataloader_pretrained, class_names
 ```
 <pre>
-(<torch.utils.data.dataloader.DataLoader at 0x7fc9e0af7a50>,
- <torch.utils.data.dataloader.DataLoader at 0x7fc9e0c5be50>,
+(torch.utils.data.dataloader.DataLoader at 0x7fc9e0af7a50,
+ torch.utils.data.dataloader.DataLoader at 0x7fc9e0c5be50,
  ['pizza', 'steak', 'sushi'])
 </pre>
 
